@@ -4,27 +4,35 @@
   <br>
 </h1>
 
-<h4 align="center">AI-powered travel planner that turns your ideas into detailed, day-by-day itineraries — with interactive maps, hidden gems, and smart budget estimates.</h4>
+<h4 align="center">AI-powered travel planner — describe your trip and get a detailed day-by-day itinerary with maps, hidden gems, weather, and budget estimates.</h4>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Next.js-14-black?logo=nextdotjs&logoColor=white" />
   <img src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white" />
   <img src="https://img.shields.io/badge/Express.js-5-000000?logo=express&logoColor=white" />
   <img src="https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma&logoColor=white" />
-  <img src="https://img.shields.io/badge/PostgreSQL-Database-4169E1?logo=postgresql&logoColor=white" />
-  <img src="https://img.shields.io/badge/Google%20Gemini-AI-4285F4?logo=google&logoColor=white" />
-  <img src="https://img.shields.io/badge/License-MIT-green" />
+  <img src="https://img.shields.io/badge/PostgreSQL-Supabase-4169E1?logo=postgresql&logoColor=white" />
+  <img src="https://img.shields.io/badge/Google%20Gemini-2.0%20Flash-4285F4?logo=google&logoColor=white" />
+  <img src="https://img.shields.io/badge/Deployed-Vercel%20%2B%20Railway-000000?logo=vercel&logoColor=white" />
+  <img src="https://img.shields.io/badge/License-MIT-22c55e" />
+</p>
+
+<p align="center">
+  <a href="YOUR_VERCEL_URL" target="_blank"><strong>🚀 Live Demo »</strong></a>
 </p>
 
 <p align="center">
   <a href="#-features">Features</a> •
-  <a href="#-tech-stack">Tech Stack</a> •
-  <a href="#-architecture">Architecture</a> •
-  <a href="#-folder-structure">Folder Structure</a> •
-  <a href="#-getting-started">Getting Started</a> •
-  <a href="#-api-reference">API Reference</a> •
-  <a href="#-deployment">Deployment</a>
+  <a href="#-tech-stack">Stack</a> •
+  <a href="#-getting-started">Setup</a> •
+  <a href="#%EF%B8%8F-deployment">Deploy</a> •
+  <a href="#-api-reference">API</a>
 </p>
+
+---
+
+> **Screenshot** — *(add a screenshot at `docs/screenshot.png` and uncomment the line below)*
+> <!-- ![TripMind Dashboard](docs/screenshot.png) -->
 
 ---
 
@@ -32,133 +40,59 @@
 
 | Feature | Description |
 |---|---|
-| 🤖 **AI Itinerary Generation** | Describe your trip in natural language — Gemini Flash generates a complete day-by-day plan with morning, afternoon, and evening activities |
-| 🗺️ **Interactive Map** | Every activity is pinned on a Leaflet map with real GPS coordinates. Visualize your whole trip at a glance |
-| 💰 **Smart Budget Estimates** | Get per-day and total estimated costs. Supports multiple currencies |
-| 💎 **Hidden Gems** | Discover off-the-beaten-path spots handpicked for your travel style and preferences |
-| 🎒 **Packing Tips** | Context-aware packing suggestions generated for your destination, season, and activities |
-| 📋 **Trip History** | All your generated itineraries are saved to your account and accessible from a dashboard |
-| 🔐 **Secure Auth** | JWT-based authentication with bcrypt password hashing |
-| 🎨 **Polished UI** | Smooth animations via Framer Motion, fully responsive Tailwind CSS layout |
+| 🤖 **AI Itinerary Generation** | Describe your trip in plain language — Gemini 2.0 Flash generates a complete day-by-day plan with morning/afternoon/evening activities and real GPS coordinates |
+| 🗺️ **Interactive Map** | Every activity pinned on a Leaflet map — visualise your entire route at a glance |
+| ☀️ **Live Weather** | Per-day weather forecast fetched from Open-Meteo for your destination |
+| 💰 **Budget Tracker** | Per-day estimated costs, total budget, and an expense log with PDF export |
+| 💎 **Hidden Gems** | Off-the-beaten-path recommendations generated for your travel style |
+| 🎒 **Packing Checklist** | Context-aware packing list — saved to localStorage as you tick items off |
+| 🤝 **AI Trip Chat** | Ask follow-up questions about your itinerary using a contextual AI assistant |
+| 🔗 **Trip Sharing** | One-click shareable public link for any itinerary |
+| 🔐 **Secure Auth** | JWT + bcrypt credentials, Google OAuth via NextAuth |
+| 📱 **Fully Responsive** | Mobile-first layout, hamburger sidebar, 44px tap targets |
 
 ---
 
 ## 🛠 Tech Stack
 
 ### Frontend
-| Technology | Version | Purpose |
-|---|---|---|
-| [Next.js](https://nextjs.org/) | 14 (App Router) | React framework, file-based routing, SSR |
-| [TypeScript](https://www.typescriptlang.org/) | 5 | Type safety across the entire frontend |
-| [Tailwind CSS](https://tailwindcss.com/) | 3 | Utility-first styling |
-| [Framer Motion](https://www.framer.com/motion/) | 12 | Page transitions and component animations |
-| [React Leaflet](https://react-leaflet.js.org/) | 4 | Interactive trip maps with GPS markers |
-| [Lucide React](https://lucide.dev/) | latest | Icon library |
-| [Axios](https://axios-http.com/) | 1 | HTTP client for API calls |
-| [js-cookie](https://github.com/js-cookie/js-cookie) | 3 | JWT token storage in browser cookies |
+| Technology | Purpose |
+|---|---|
+| Next.js 14 (App Router) | React framework, SSR, file-based routing |
+| TypeScript 5 | End-to-end type safety |
+| Tailwind CSS 3 | Utility-first styling |
+| Framer Motion 12 | Page transitions and micro-animations |
+| React Leaflet 4 | Interactive GPS maps |
+| NextAuth.js | Google OAuth + credentials session management |
+| Axios | HTTP client with cancel-token support |
 
 ### Backend
-| Technology | Version | Purpose |
-|---|---|---|
-| [Express.js](https://expressjs.com/) | 5 | HTTP server and REST API routing |
-| [Prisma](https://www.prisma.io/) | 5 | Type-safe ORM for PostgreSQL |
-| [PostgreSQL](https://www.postgresql.org/) | — | Relational database for users and trips |
-| [Google Gemini](https://ai.google.dev/) | gemini-flash-latest | LLM for structured itinerary generation |
-| [jsonwebtoken](https://github.com/auth0/node-jsonwebtoken) | 9 | Stateless JWT authentication |
-| [bcryptjs](https://github.com/dcodeIO/bcrypt.js) | 3 | Password hashing |
-| [dotenv](https://github.com/motdotla/dotenv) | 17 | Environment variable management |
-| [cors](https://github.com/expressjs/cors) | 2 | Cross-origin request handling |
+| Technology | Purpose |
+|---|---|
+| Express.js 5 | REST API |
+| Prisma 5 | Type-safe ORM |
+| PostgreSQL (Supabase) | Relational database |
+| Google Gemini 2.0 Flash | Structured itinerary generation |
+| jsonwebtoken + bcryptjs | Stateless auth |
 
 ---
 
 ## 🏗 Architecture
 
 ```
-                          ┌─────────────────────────────┐
-                          │         User Browser         │
-                          │   Next.js 14 (App Router)    │
-                          │  TypeScript • Tailwind CSS   │
-                          │  Framer Motion • Leaflet     │
-                          └──────────────┬───────────────┘
-                                         │ HTTPS / REST API
-                          ┌──────────────▼───────────────┐
-                          │       Express.js Server       │
-                          │  ┌──────────────────────────┐│
-                          │  │  JWT Auth Middleware      ││
-                          │  └──────────────────────────┘│
-                          │  ┌─────────┐  ┌────────────┐ │
-                          │  │/auth    │  │/trips      │ │
-                          │  │ routes  │  │ routes     │ │
-                          │  └─────────┘  └────┬───────┘ │
-                          │                     │         │
-                          │  ┌──────────────────▼───────┐ │
-                          │  │    AI Service (Gemini)    │ │
-                          │  │  gemini-flash-latest LLM  │ │
-                          │  └──────────────────────────┘ │
-                          └──────────────┬───────────────┘
-                                         │ Prisma ORM
-                          ┌──────────────▼───────────────┐
-                          │         PostgreSQL             │
-                          │  Users table • Trips table    │
-                          └──────────────────────────────┘
-```
-
-**Data flow for itinerary generation:**
-1. Authenticated user submits trip preferences (destination, days, budget, style, pace)
-2. Express route calls the AI Service
-3. AI Service builds a structured prompt and calls the Gemini API, requesting a strict JSON response
-4. The parsed itinerary JSON is stored in the `trips` table via Prisma
-5. The full trip record (including GPS coordinates per activity) returns to the frontend
-6. React-Leaflet renders markers from the coordinate data; Framer Motion animates the UI
-
----
-
-## 📁 Folder Structure
-
-```
-TripMind/
-├── .env.example               # Root env template
-├── .gitignore
-├── vercel.json                # Vercel deployment config (targets /frontend)
-│
-├── backend/                   # Express.js REST API
-│   ├── server.js              # App entry point — wires up middleware & routes
-│   ├── package.json
-│   ├── .env                   # Runtime secrets (not committed)
-│   │
-│   ├── middleware/
-│   │   └── authMiddleware.js  # JWT verification — protects all /trips routes
-│   │
-│   ├── routes/
-│   │   ├── auth.js            # POST /auth/register, POST /auth/login
-│   │   └── trips.js           # POST /trips/generate, GET /trips/my, GET /trips/:id
-│   │
-│   ├── services/
-│   │   └── aiService.js       # Gemini API integration — prompt engineering & JSON parsing
-│   │
-│   └── prisma/
-│       └── schema.prisma      # Database schema — User and Trip models
-│
-└── frontend/                  # Next.js 14 App Router
-    ├── next.config.mjs
-    ├── tailwind.config.ts
-    ├── tsconfig.json
-    │
-    ├── app/                   # App Router pages
-    │   ├── layout.tsx         # Root layout with global font and metadata
-    │   ├── page.tsx           # Landing / home page
-    │   ├── globals.css
-    │   │
-    │   ├── auth/
-    │   │   ├── login/         # Login page
-    │   │   └── register/      # Registration page
-    │   │
-    │   ├── dashboard/         # User dashboard — trip history
-    │   └── plan/              # Trip planner form + generated itinerary view with map
-    │
-    ├── components/            # Shared UI components
-    ├── lib/                   # Utilities (API client, helpers)
-    └── types/                 # TypeScript type definitions
+Browser (Next.js 14)
+      │  HTTPS / REST
+      ▼
+Express.js API  ──► JWT Middleware
+      │
+      ├── /auth   routes  (signup · login · Google OAuth upsert)
+      └── /trips  routes  (generate · my · share · chat · delete)
+                   │
+                   ▼
+           Gemini 2.0 Flash  ──► JSON itinerary
+                   │
+                   ▼
+      Prisma ORM ──► PostgreSQL (Supabase)
 ```
 
 ---
@@ -166,147 +100,103 @@ TripMind/
 ## 🚀 Getting Started
 
 ### Prerequisites
-
 - **Node.js** ≥ 18.x
-- **PostgreSQL** running locally (or a hosted instance)
-- **Google Gemini API Key** — get one free at [aistudio.google.com](https://aistudio.google.com/)
+- A free [Supabase](https://supabase.com/) project (PostgreSQL)
+- A free [Google Gemini API key](https://aistudio.google.com/)
+- Google OAuth credentials from [Google Cloud Console](https://console.cloud.google.com/)
 
 ---
 
-### 1. Clone the Repository
+### 1 · Clone
 
 ```bash
 git clone https://github.com/vishalkumar321/TripMind.git
 cd TripMind
 ```
 
----
-
-### 2. Configure Environment Variables
-
-Create a `.env` file inside the `backend/` directory:
+### 2 · Backend env
 
 ```bash
 cp .env.example backend/.env
 ```
 
-Then fill in your values:
+Edit `backend/.env`:
 
 ```env
-# backend/.env
-
-# PostgreSQL connection string
-DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/tripmind"
-
-# A long, random secret for signing JWTs
-JWT_SECRET="your-super-secret-jwt-key"
-
-# Google AI Studio API key
-GEMINI_API_KEY="your-gemini-api-key"
-
-# Server port (optional, defaults to 8000)
+DATABASE_URL="postgresql://USER:PASS@host:5432/postgres"
+JWT_SECRET="run: openssl rand -hex 32"
+GEMINI_API_KEY="your-key-from-aistudio"
 PORT=8000
+NODE_ENV=development
+FRONTEND_URL=http://localhost:3000
 ```
 
-> **Tip:** Generate a strong JWT secret with `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`
+### 3 · Frontend env
 
----
+Create `frontend/.env.local`:
 
-### 3. Set Up the Database
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=same-value-as-JWT_SECRET
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+```
 
-Make sure PostgreSQL is running, then run the Prisma migration to create the `users` and `trips` tables:
+### 4 · Install & run
 
 ```bash
+# Terminal 1 — backend
 cd backend
 npm install
-npx prisma migrate dev --name init
-```
+npm run dev          # runs prisma db push then nodemon
 
----
-
-### 4. Start the Backend
-
-```bash
-# Inside /backend
-npm run dev
-# Server starts at http://localhost:8000
-```
-
----
-
-### 5. Start the Frontend
-
-Open a new terminal:
-
-```bash
+# Terminal 2 — frontend
 cd frontend
 npm install
-npm run dev
-# App starts at http://localhost:3000
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser. Register an account, describe your trip, and let TripMind plan it for you.
-
----
-
-## 📡 API Reference
-
-All `/trips` routes require a `Bearer` token in the `Authorization` header.
-
-### Auth
-
-| Method | Endpoint | Body | Description |
-|---|---|---|---|
-| `POST` | `/auth/register` | `{ name, email, password }` | Create a new account |
-| `POST` | `/auth/login` | `{ email, password }` | Login and receive a JWT |
-
-### Trips
-
-| Method | Endpoint | Body | Description |
-|---|---|---|---|
-| `POST` | `/trips/generate` | `{ destination, description, days, budget, currency, style, pace }` | Generate and save an AI itinerary |
-| `GET` | `/trips/my` | — | Fetch all trips for the logged-in user |
-| `GET` | `/trips/:id` | — | Fetch a single trip by ID |
-
-#### Example — Generate a Trip
-
-```bash
-curl -X POST http://localhost:8000/trips/generate \
-  -H "Authorization: Bearer <your_jwt>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "destination": "Kyoto, Japan",
-    "description": "I want a mix of temples, street food, and nature walks",
-    "days": 5,
-    "budget": 1500,
-    "currency": "USD",
-    "style": "Cultural",
-    "pace": "Relaxed"
-  }'
+npm run dev          # http://localhost:3000
 ```
 
 ---
 
 ## ☁️ Deployment
 
-TripMind is architected for a zero-cost cloud deployment across three platforms:
+| Layer | Platform | Notes |
+|---|---|---|
+| **Database** | [Supabase](https://supabase.com/) | Free tier — copy Direct Connection string |
+| **Backend API** | [Railway](https://railway.app/) | Set root dir to `backend/`; add env vars; `npm start` auto-runs `prisma db push` |
+| **Frontend** | [Vercel](https://vercel.com/) | `vercel.json` targets `frontend/`; set `NEXT_PUBLIC_API_URL` to Railway URL |
 
-### Database → [Supabase](https://supabase.com/)
-1. Create a free Supabase project
-2. Copy the **Direct Connection** PostgreSQL string from *Project Settings → Database*
-3. Set it as `DATABASE_URL` in your backend environment
+**After deploying**, verify the backend is healthy:
+```bash
+curl https://your-railway-app.railway.app/health
+# → { "status": "ok", "timestamp": "..." }
+```
 
-### Backend API → [Railway](https://railway.app/)
-1. Create a new Railway project and connect your GitHub repository
-2. Set the **Root Directory** to `backend`
-3. Add environment variables: `DATABASE_URL`, `JWT_SECRET`, `GEMINI_API_KEY`
-4. Deploy — Railway auto-detects Node.js and runs `npm start`
+---
 
-### Frontend → [Vercel](https://vercel.com/)
-1. Import the GitHub repository into Vercel
-2. Vercel reads `vercel.json` at the root to target the `frontend/` directory automatically
-3. Set the environment variable `NEXT_PUBLIC_API_URL` to your Railway backend URL
-4. Deploy — Vercel handles the Next.js build pipeline
+## 📡 API Reference
+
+All `/trips` routes require `Authorization: Bearer <token>`.
+
+### Auth
+| Method | Endpoint | Body |
+|---|---|---|
+| `POST` | `/auth/signup` | `{ name, email, password }` |
+| `POST` | `/auth/login` | `{ email, password }` |
+| `POST` | `/auth/google` | `{ name, email, image }` |
+| `GET`  | `/auth/me` | — (token required) |
+
+### Trips
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/trips/generate` | Generate + save AI itinerary |
+| `GET`  | `/trips/my` | All trips for current user |
+| `GET`  | `/trips/:id` | Single trip (owner only) |
+| `GET`  | `/trips/public/:id` | Public share view |
+| `POST` | `/trips/chat` | AI chat about a trip |
+| `DELETE` | `/trips/:id` | Soft-delete a trip |
+| `GET`  | `/health` | Health check |
 
 ---
 
@@ -314,46 +204,37 @@ TripMind is architected for a zero-cost cloud deployment across three platforms:
 
 ```prisma
 model User {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   name      String
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
+  email     String    @unique
+  password  String?
+  image     String?
+  createdAt DateTime  @default(now())
   trips     Trip[]
+  @@index([email])
 }
 
 model Trip {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id])
   title       String
   destination String
   days        Int
   budget      String
   style       String
-  itinerary   Json     // Full AI-generated itinerary stored as JSON
-  createdAt   DateTime @default(now())
+  itinerary   Json
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  @@index([userId])
 }
 ```
 
 ---
 
-## 🤝 Contributing
-
-Contributions, issues, and feature requests are welcome.
-
-1. Fork the repo
-2. Create your feature branch: `git checkout -b feature/your-feature`
-3. Commit your changes: `git commit -m 'feat: add your feature'`
-4. Push to the branch: `git push origin feature/your-feature`
-5. Open a Pull Request
-
----
-
 ## 📄 License
 
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE) for details.
 
 ---
 
-<p align="center">Built with ❤️ by <a href="https://github.com/vishalkumar321">Vishal Kumar</a></p>
+<p align="center">Built by <a href="https://github.com/vishalkumar321">Vishal Kumar</a></p>

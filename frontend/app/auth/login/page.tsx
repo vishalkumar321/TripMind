@@ -3,146 +3,177 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import Cookies from 'js-cookie';
-import axios from 'axios';
+import { signIn } from 'next-auth/react';
+import { useToast } from '@/components/Toast';
+
+const MAX_ATTEMPTS_BEFORE_HINT = 5;
 
 export default function LoginPage() {
     const router = useRouter();
+    const { showToast } = useToast();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+    const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({});
     const [isLoading, setIsLoading] = useState(false);
+    const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+    const [failedAttempts, setFailedAttempts] = useState(0);
 
     const validate = () => {
-        const newErrors: { email?: string; password?: string } = {};
-        if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
-            newErrors.email = 'Please enter a valid email address';
+        const e: typeof errors = {};
+        if (!email.trim() || !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email.trim())) {
+            e.email = 'Please enter a valid email address';
         }
-        if (!password || password.length < 8) {
-            newErrors.password = 'Password must be at least 8 characters';
-        }
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
+        if (!password.trim()) e.password = 'Please enter your password';
+        setErrors(e);
+        return Object.keys(e).length === 0;
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleGoogle = async () => {
+        setIsGoogleLoading(true);
+        await signIn('google', { callbackUrl: '/dashboard' });
+    };
+
+    const handleSubmit = async (ev: React.FormEvent) => {
+        ev.preventDefault();
         if (!validate()) return;
-
         setIsLoading(true);
-        try {
-            const response = await axios.post('http://localhost:8000/auth/login', {
-                email,
-                password
-            });
+        setErrors({});
 
-            if (response.data.token) {
-                Cookies.set('token', response.data.token, { expires: 7 });
-                router.push('/dashboard');
+        const result = await signIn('credentials', {
+            email: email.trim(),
+            password: password.trim(),
+            redirect: false,
+        });
+
+        if (result?.error) {
+            const newAttempts = failedAttempts + 1;
+            setFailedAttempts(newAttempts);
+            if (newAttempts >= MAX_ATTEMPTS_BEFORE_HINT) {
+                setErrors({ general: 'Too many attempts. Please wait a moment before trying again.' });
+            } else {
+                setErrors({ general: 'Incorrect email or password' });
             }
-        } catch (error: any) {
-            console.error('Login error:', error);
-            setErrors({ ...errors, password: error.response?.data?.error || 'Failed to login' });
             setIsLoading(false);
+        } else {
+            showToast('Welcome back!', 'success');
+            router.push('/dashboard');
         }
     };
+
+    const inputStyle = (hasError?: string): React.CSSProperties => ({
+        width: '100%', background: 'var(--bg)',
+        border: `1.5px solid ${hasError ? '#e05555' : 'var(--border)'}`,
+        borderRadius: '12px', padding: '0.75rem 1rem',
+        color: 'var(--text)', fontFamily: 'var(--font-sora)',
+        fontSize: '15px', outline: 'none',
+    });
 
     return (
-        <div className="flex min-h-screen bg-background text-white font-sans">
-            {/* Left Panel */}
-            <div className="hidden lg:flex flex-col justify-between w-1/2 bg-surface p-12 border-r border-white/5 relative overflow-hidden">
-                {/* Abstract Background elements */}
-                <div className="absolute top-1/4 -left-1/4 w-96 h-96 bg-purple-900/20 rounded-full blur-[100px] pointer-events-none" />
-                <div className="absolute bottom-1/4 -right-1/4 w-96 h-96 bg-gold/10 rounded-full blur-[100px] pointer-events-none" />
+        <div className="flex min-h-screen" style={{ fontFamily: 'var(--font-sora)' }}>
 
-                <Link href="/" className="text-3xl font-playfair font-bold text-gold z-10">
-                    TripMind
+            {/* ── LEFT PANEL (dark) ── */}
+            <div className="hidden lg:flex flex-col justify-between w-1/2 p-14 relative overflow-hidden" style={{ background: 'var(--dark)' }}>
+                <div className="pointer-events-none absolute top-1/4 -left-32 w-80 h-80 rounded-full opacity-30"
+                    style={{ background: 'radial-gradient(circle, #E07B4F 0%, transparent 70%)', filter: 'blur(80px)' }} />
+                <div className="pointer-events-none absolute bottom-1/4 -right-24 w-72 h-72 rounded-full opacity-20"
+                    style={{ background: 'radial-gradient(circle, #4f8fe0 0%, transparent 70%)', filter: 'blur(80px)' }} />
+                <Link href="/" className="text-2xl font-fraunces font-semibold tracking-wide z-10" style={{ color: '#fff', textDecoration: 'none' }}>
+                    Trip<span style={{ color: 'var(--accent)' }}>Mind</span>
                 </Link>
-
-                <div className="z-10 mt-12">
-                    <h2 className="text-5xl font-playfair font-semibold leading-tight mb-6 tracking-wide">
-                        Begin your next <br /> <span className="italic text-gold">great adventure.</span>
-                    </h2>
-                </div>
-
                 <div className="z-10">
-                    <p className="text-gray-400 font-playfair italic text-lg leading-relaxed max-w-md">
-                        "The world is a book and those who do not travel read only one page."
-                    </p>
-                    <p className="text-gray-500 text-sm mt-3 font-semibold">— St. Augustine</p>
+                    <h2 className="font-fraunces font-light italic text-white leading-tight mb-8" style={{ fontSize: 'clamp(2rem, 3vw, 2.75rem)' }}>
+                        Begin your next<br /><em style={{ color: 'var(--accent)' }}>great adventure.</em>
+                    </h2>
+                    <blockquote>
+                        <p className="font-fraunces italic leading-relaxed mb-3" style={{ color: 'rgba(255,255,255,0.55)', fontSize: '17px' }}>
+                            &ldquo;The world is a book and those who do not travel read only one page.&rdquo;
+                        </p>
+                        <cite className="font-sora text-sm font-semibold not-italic" style={{ color: 'rgba(255,255,255,0.35)' }}>— St. Augustine</cite>
+                    </blockquote>
                 </div>
             </div>
 
-            {/* Right Panel (Form) */}
-            <div className="flex-1 flex flex-col justify-center items-center p-8 relative">
-                <div className="w-full max-w-[360px] relative z-10">
-                    <div className="mb-10 text-center lg:text-left">
-                        <h1 className="text-3xl font-playfair font-bold mb-2">Welcome back</h1>
-                        <p className="text-gray-400 text-sm">Please enter your details to sign in.</p>
+            {/* ── RIGHT PANEL (cream) ── */}
+            <div className="flex-1 flex flex-col justify-center items-center p-8" style={{ background: 'var(--bg)' }}>
+                <div className="w-full max-w-[380px]">
+
+                    <Link href="/" className="lg:hidden block text-2xl font-fraunces font-semibold mb-10 text-center" style={{ color: 'var(--text)', textDecoration: 'none' }}>
+                        Trip<span style={{ color: 'var(--accent)' }}>Mind</span>
+                    </Link>
+
+                    <div className="mb-8">
+                        <h1 className="font-fraunces font-semibold mb-2" style={{ fontSize: '2rem', color: 'var(--text)' }}>Welcome back</h1>
+                        <p className="font-sora text-sm" style={{ color: 'var(--muted)' }}>Sign in to your account to continue.</p>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
-                            <input
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className={`w-full bg-black/40 border ${errors.email ? 'border-red-500/50' : 'border-white/10'} rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold transition-all`}
-                                placeholder="Enter your email"
-                            />
-                            {errors.email && <p className="text-red-400 text-xs mt-1.5">{errors.email}</p>}
-                        </div>
+                    {/* Google button */}
+                    <button
+                        onClick={handleGoogle}
+                        disabled={isGoogleLoading || isLoading}
+                        style={{
+                            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem',
+                            background: 'var(--surface)', border: '1.5px solid var(--border)', borderRadius: '100px',
+                            padding: '0.75rem 1.5rem', fontFamily: 'var(--font-sora)', fontSize: '14px', fontWeight: 600,
+                            color: 'var(--text)', cursor: (isGoogleLoading || isLoading) ? 'not-allowed' : 'pointer', marginBottom: '1rem',
+                            transition: 'border-color 0.2s, box-shadow 0.2s',
+                        }}
+                        onMouseEnter={(e) => { if (!isGoogleLoading && !isLoading) { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(224,123,79,0.1)'; } }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none'; }}
+                    >
+                        {/* Google G icon */}
+                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                            <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4" />
+                            <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853" />
+                            <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05" />
+                            <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335" />
+                        </svg>
+                        {isGoogleLoading ? 'Redirecting…' : 'Continue with Google'}
+                    </button>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-1.5">Password</label>
-                            <input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className={`w-full bg-black/40 border ${errors.password ? 'border-red-500/50' : 'border-white/10'} rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold transition-all`}
-                                placeholder="••••••••"
-                            />
-                            {errors.password && <p className="text-red-400 text-xs mt-1.5">{errors.password}</p>}
-                        </div>
+                    {/* Divider */}
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
+                        <span className="font-sora text-xs" style={{ color: 'var(--muted)' }}>or</span>
+                        <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
+                    </div>
 
-                        <div className="flex items-center justify-between">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" className="rounded border-white/10 bg-black/40 text-gold focus:ring-gold focus:ring-offset-background" />
-                                <span className="text-xs text-gray-400">Remember for 30 days</span>
-                            </label>
-                            <Link href="#" className="text-xs text-gold hover:underline">
-                                Forgot password?
-                            </Link>
-                        </div>
+                    {/* Form card */}
+                    <div className="p-8" style={{ background: 'var(--surface)', borderRadius: '20px', border: '1.5px solid var(--border)' }}>
+                        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+                            <div>
+                                <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--text)' }}>Email</label>
+                                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" style={inputStyle(errors.email)} disabled={isLoading} />
+                                {errors.email && <p className="text-xs mt-1.5" style={{ color: '#e05555' }}>{errors.email}</p>}
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--text)' }}>Password</label>
+                                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" style={inputStyle(errors.password)} disabled={isLoading} />
+                                {errors.password && <p className="text-xs mt-1.5" style={{ color: '#e05555' }}>{errors.password}</p>}
+                            </div>
 
-                        <button
-                            type="submit"
-                            disabled={isLoading}
-                            className="w-full bg-gold text-black py-2.5 rounded-lg font-bold hover:bg-gold/90 transition-colors shadow-[0_0_15px_rgba(201,169,110,0.2)] disabled:opacity-70 disabled:cursor-not-allowed mt-2"
-                        >
-                            {isLoading ? 'Signing in...' : 'Sign In'}
-                        </button>
+                            {/* General error (wrong credentials / rate limit) */}
+                            {errors.general && (
+                                <p className="text-xs py-2.5 px-3.5 rounded-lg" style={{ color: '#e05555', background: 'rgba(224,85,85,0.07)', border: '1px solid rgba(224,85,85,0.2)' }}>
+                                    {errors.general}
+                                </p>
+                            )}
 
-                        <button
-                            type="button"
-                            className="w-full border border-white/10 text-white flex justify-center items-center gap-2 py-2.5 rounded-lg font-medium hover:bg-white/5 transition-colors"
-                        >
-                            <svg className="w-4 h-4" viewBox="0 0 24 24">
-                                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                            </svg>
-                            Continue with Google
-                        </button>
-                    </form>
+                            <div className="flex justify-end">
+                                <Link href="#" className="text-xs font-semibold hover:underline" style={{ color: 'var(--accent)' }}>Forgot password?</Link>
+                            </div>
+                            <button type="submit" disabled={isLoading}
+                                style={{ width: '100%', background: isLoading ? 'var(--muted)' : 'var(--dark)', color: '#fff', border: 'none', borderRadius: '100px', padding: '0.8rem 2rem', fontSize: '15px', fontWeight: 600, fontFamily: 'var(--font-sora)', cursor: isLoading ? 'not-allowed' : 'pointer', transition: 'background 0.2s' }}
+                                onMouseEnter={(e) => { if (!isLoading) e.currentTarget.style.background = 'var(--accent)'; }}
+                                onMouseLeave={(e) => { if (!isLoading) e.currentTarget.style.background = 'var(--dark)'; }}
+                            >
+                                {isLoading ? 'Signing in…' : 'Sign In →'}
+                            </button>
+                        </form>
+                    </div>
 
-                    <p className="text-center text-sm text-gray-400 mt-8">
-                        Don't have an account?{' '}
-                        <Link href="/auth/signup" className="text-white font-medium hover:text-gold transition-colors">
-                            Sign up
-                        </Link>
+                    <p className="text-center text-sm mt-6" style={{ color: 'var(--muted)' }}>
+                        Don&apos;t have an account?{' '}
+                        <Link href="/auth/signup" className="font-semibold hover:underline" style={{ color: 'var(--text)' }}>Sign up</Link>
                     </p>
                 </div>
             </div>

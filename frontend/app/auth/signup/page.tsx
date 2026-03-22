@@ -3,184 +3,201 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import Cookies from 'js-cookie';
+import { signIn } from 'next-auth/react';
 import axios from 'axios';
+import { useToast } from '@/components/Toast';
+
+// ── Validation constants ────────────────────────────────────────────────────
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+const DISPOSABLE_DOMAINS = [
+    'mailinator.com', 'tempmail.com', 'guerrillamail.com',
+    'throwaway.email', 'yopmail.com', '10minutemail.com',
+];
+
+function validateEmail(email: string): string | null {
+    const trimmed = email.trim();
+    if (!EMAIL_REGEX.test(trimmed)) return 'Please use a valid email address';
+    const domain = trimmed.split('@')[1]?.toLowerCase();
+    if (DISPOSABLE_DOMAINS.includes(domain)) return 'Please use a valid email address';
+    return null;
+}
+
+function validatePassword(password: string): string | null {
+    const p = password.trim();
+    if (p.length < 8 || !/[A-Z]/.test(p) || !/[0-9]/.test(p)) {
+        return 'Password must be 8+ characters with a number and uppercase letter';
+    }
+    return null;
+}
 
 export default function SignupPage() {
     const router = useRouter();
+    const { showToast } = useToast();
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({});
     const [isLoading, setIsLoading] = useState(false);
-
-    const getPasswordStrength = () => {
-        if (!password) return 0;
-        let strength = 0;
-        if (password.length >= 8) strength += 1;
-        if (/[A-Z]/.test(password) && /[a-z]/.test(password)) strength += 1;
-        if (/[0-9!@#$%^&*]/.test(password)) strength += 1;
-        return strength;
-    };
-
-    const strength = getPasswordStrength();
-
-    const getStrengthBarParams = () => {
-        if (strength === 0) return { width: '0%', color: 'bg-transparent' };
-        if (strength === 1) return { width: '33%', color: 'bg-red-500' };
-        if (strength === 2) return { width: '66%', color: 'bg-yellow-500' };
-        return { width: '100%', color: 'bg-green-500' };
-    };
-
-    const strengthParams = getStrengthBarParams();
+    const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
     const validate = () => {
-        const newErrors: { name?: string; email?: string; password?: string } = {};
-        if (!name || name.trim().length < 2) {
-            newErrors.name = 'Please enter your full name';
-        }
-        if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
-            newErrors.email = 'Please enter a valid email address';
-        }
-        if (!password || password.length < 8) {
-            newErrors.password = 'Password must be at least 8 characters';
-        }
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
+        const e: typeof errors = {};
+        if (!name.trim() || name.trim().length < 2) e.name = 'Please enter your full name';
+        const emailErr = validateEmail(email);
+        if (emailErr) e.email = emailErr;
+        const pwErr = validatePassword(password);
+        if (pwErr) e.password = pwErr;
+        setErrors(e);
+        return Object.keys(e).length === 0;
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!validate()) return;
+    const handleGoogle = async () => {
+        setIsGoogleLoading(true);
+        await signIn('google', { callbackUrl: '/dashboard' });
+    };
 
+    const handleSubmit = async (ev: React.FormEvent) => {
+        ev.preventDefault();
+        if (!validate()) return;
         setIsLoading(true);
         try {
-            const response = await axios.post('http://localhost:8000/auth/signup', {
-                name,
-                email,
-                password
+            await axios.post('http://localhost:8000/auth/signup', {
+                name: name.trim(),
+                email: email.trim(),
+                password: password.trim(),
             });
-
-            if (response.data.token) {
-                Cookies.set('token', response.data.token, { expires: 7 });
+            // Auto-login after successful signup
+            const result = await signIn('credentials', {
+                email: email.trim(),
+                password: password.trim(),
+                redirect: false,
+            });
+            if (result?.error) {
+                setErrors({ email: 'Account created — please sign in' });
+                router.push('/auth/login');
+            } else {
+                showToast('Account created!', 'success');
                 router.push('/dashboard');
             }
-        } catch (error: any) {
-            console.error('Signup error:', error);
-            setErrors({ ...errors, email: error.response?.data?.error || 'Failed to sign up' });
+        } catch (err: unknown) {
+            const axErr = err as { response?: { data?: { error?: string } } };
+            const msg = axErr.response?.data?.error || '';
+            if (msg.toLowerCase().includes('already')) {
+                setErrors({ email: 'An account with this email already exists' });
+            } else {
+                setErrors({ email: msg || 'Failed to sign up. Please try again.' });
+            }
             setIsLoading(false);
         }
     };
 
+    const inputStyle = (hasError?: string): React.CSSProperties => ({
+        width: '100%', background: 'var(--bg)',
+        border: `1.5px solid ${hasError ? '#e05555' : 'var(--border)'}`,
+        borderRadius: '12px', padding: '0.75rem 1rem',
+        color: 'var(--text)', fontFamily: 'var(--font-sora)',
+        fontSize: '15px', outline: 'none',
+    });
+
     return (
-        <div className="flex min-h-screen bg-background text-white font-sans">
-            {/* Left Panel */}
-            <div className="hidden lg:flex flex-col justify-between w-1/2 bg-surface p-12 border-r border-white/5 relative overflow-hidden">
-                {/* Abstract Background elements */}
-                <div className="absolute top-1/4 -left-1/4 w-96 h-96 bg-purple-900/20 rounded-full blur-[100px] pointer-events-none" />
-                <div className="absolute bottom-1/4 -right-1/4 w-96 h-96 bg-gold/10 rounded-full blur-[100px] pointer-events-none" />
+        <div className="flex min-h-screen" style={{ fontFamily: 'var(--font-sora)' }}>
 
-                <Link href="/" className="text-3xl font-playfair font-bold text-gold z-10">
-                    TripMind
+            {/* ── LEFT PANEL ── */}
+            <div className="hidden lg:flex flex-col justify-between w-1/2 p-14 relative overflow-hidden" style={{ background: 'var(--dark)' }}>
+                <div className="pointer-events-none absolute top-1/4 -left-32 w-80 h-80 rounded-full opacity-30"
+                    style={{ background: 'radial-gradient(circle, #E07B4F 0%, transparent 70%)', filter: 'blur(80px)' }} />
+                <div className="pointer-events-none absolute bottom-1/4 -right-24 w-72 h-72 rounded-full opacity-20"
+                    style={{ background: 'radial-gradient(circle, #4f8fe0 0%, transparent 70%)', filter: 'blur(80px)' }} />
+                <Link href="/" className="text-2xl font-fraunces font-semibold tracking-wide z-10" style={{ color: '#fff', textDecoration: 'none' }}>
+                    Trip<span style={{ color: 'var(--accent)' }}>Mind</span>
                 </Link>
-
-                <div className="z-10 mt-12">
-                    <h2 className="text-5xl font-playfair font-semibold leading-tight mb-6 tracking-wide">
-                        Unlock the world <br /> <span className="italic text-gold">with AI.</span>
-                    </h2>
-                </div>
-
                 <div className="z-10">
-                    <p className="text-gray-400 font-playfair italic text-lg leading-relaxed max-w-md">
-                        "We travel not to escape life, but for life not to escape us."
-                    </p>
-                    <p className="text-gray-500 text-sm mt-3 font-semibold">— Anonymous</p>
+                    <h2 className="font-fraunces font-light italic text-white leading-tight mb-8" style={{ fontSize: 'clamp(2rem, 3vw, 2.75rem)' }}>
+                        Unlock the world<br /><em style={{ color: 'var(--accent)' }}>with AI.</em>
+                    </h2>
+                    <blockquote>
+                        <p className="font-fraunces italic leading-relaxed mb-3" style={{ color: 'rgba(255,255,255,0.55)', fontSize: '17px' }}>
+                            &ldquo;We travel not to escape life, but for life not to escape us.&rdquo;
+                        </p>
+                        <cite className="font-sora text-sm font-semibold not-italic" style={{ color: 'rgba(255,255,255,0.35)' }}>— Anonymous</cite>
+                    </blockquote>
                 </div>
             </div>
 
-            {/* Right Panel (Form) */}
-            <div className="flex-1 flex flex-col justify-center items-center p-8 relative">
-                <div className="w-full max-w-[360px] relative z-10">
-                    <div className="mb-8 text-center lg:text-left">
-                        <h1 className="text-3xl font-playfair font-bold mb-2">Create an account</h1>
-                        <p className="text-gray-400 text-sm">Join TripMind to personalize your travel.</p>
+            {/* ── RIGHT PANEL ── */}
+            <div className="flex-1 flex flex-col justify-center items-center p-8" style={{ background: 'var(--bg)' }}>
+                <div className="w-full max-w-[400px]">
+
+                    <Link href="/" className="lg:hidden block text-2xl font-fraunces font-semibold mb-10 text-center" style={{ color: 'var(--text)', textDecoration: 'none' }}>
+                        Trip<span style={{ color: 'var(--accent)' }}>Mind</span>
+                    </Link>
+
+                    <div className="mb-8">
+                        <h1 className="font-fraunces font-semibold mb-2" style={{ fontSize: '2rem', color: 'var(--text)' }}>Create an account</h1>
+                        <p className="font-sora text-sm" style={{ color: 'var(--muted)' }}>Join TripMind and start planning smarter.</p>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-1.5">Full Name</label>
-                            <input
-                                type="text"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                className={`w-full bg-black/40 border ${errors.name ? 'border-red-500/50' : 'border-white/10'} rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold transition-all`}
-                                placeholder="John Doe"
-                            />
-                            {errors.name && <p className="text-red-400 text-xs mt-1.5">{errors.name}</p>}
-                        </div>
+                    {/* Google button */}
+                    <button
+                        onClick={handleGoogle}
+                        disabled={isGoogleLoading || isLoading}
+                        style={{
+                            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem',
+                            background: 'var(--surface)', border: '1.5px solid var(--border)', borderRadius: '100px',
+                            padding: '0.75rem 1.5rem', fontFamily: 'var(--font-sora)', fontSize: '14px', fontWeight: 600,
+                            color: 'var(--text)', cursor: (isGoogleLoading || isLoading) ? 'not-allowed' : 'pointer', marginBottom: '1rem',
+                            transition: 'border-color 0.2s, box-shadow 0.2s',
+                        }}
+                        onMouseEnter={(e) => { if (!isGoogleLoading && !isLoading) { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(224,123,79,0.1)'; } }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none'; }}
+                    >
+                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                            <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4" />
+                            <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853" />
+                            <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05" />
+                            <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335" />
+                        </svg>
+                        {isGoogleLoading ? 'Redirecting…' : 'Continue with Google'}
+                    </button>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
-                            <input
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className={`w-full bg-black/40 border ${errors.email ? 'border-red-500/50' : 'border-white/10'} rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold transition-all`}
-                                placeholder="Enter your email"
-                            />
-                            {errors.email && <p className="text-red-400 text-xs mt-1.5">{errors.email}</p>}
-                        </div>
+                    {/* Divider */}
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
+                        <span className="font-sora text-xs" style={{ color: 'var(--muted)' }}>or</span>
+                        <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
+                    </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-1.5">Password</label>
-                            <input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className={`w-full bg-black/40 border ${errors.password ? 'border-red-500/50' : 'border-white/10'} rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold transition-all`}
-                                placeholder="Create a password"
-                            />
-
-                            <div className="h-1 w-full bg-white/10 rounded-full mt-2 overflow-hidden flex">
-                                <div
-                                    className={`h-full transition-all duration-300 ease-in-out ${strengthParams.color}`}
-                                    style={{ width: strengthParams.width }}
-                                />
+                    {/* Form card */}
+                    <div className="p-8" style={{ background: 'var(--surface)', borderRadius: '20px', border: '1.5px solid var(--border)' }}>
+                        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+                            <div>
+                                <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--text)' }}>Full Name</label>
+                                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" style={inputStyle(errors.name)} disabled={isLoading} />
+                                {errors.name && <p className="text-xs mt-1.5" style={{ color: '#e05555' }}>{errors.name}</p>}
                             </div>
-                            <p className="text-[10px] text-gray-500 mt-1 text-right uppercase tracking-wider font-semibold">
-                                {strength === 0 ? '' : strength === 1 ? 'Weak' : strength === 2 ? 'Medium' : 'Strong'}
-                            </p>
+                            <div>
+                                <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--text)' }}>Email</label>
+                                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" style={inputStyle(errors.email)} disabled={isLoading} />
+                                {errors.email && <p className="text-xs mt-1.5" style={{ color: '#e05555' }}>{errors.email}</p>}
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--text)' }}>Password</label>
+                                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Create a password" style={inputStyle(errors.password)} disabled={isLoading} />
+                                {errors.password && <p className="text-xs mt-1.5" style={{ color: '#e05555' }}>{errors.password}</p>}
+                            </div>
+                            <button type="submit" disabled={isLoading}
+                                style={{ width: '100%', background: isLoading ? 'var(--muted)' : 'var(--dark)', color: '#fff', border: 'none', borderRadius: '100px', padding: '0.8rem 2rem', fontSize: '15px', fontWeight: 600, fontFamily: 'var(--font-sora)', cursor: isLoading ? 'not-allowed' : 'pointer', marginTop: '0.5rem', transition: 'background 0.2s' }}
+                                onMouseEnter={(e) => { if (!isLoading) e.currentTarget.style.background = 'var(--accent)'; }}
+                                onMouseLeave={(e) => { if (!isLoading) e.currentTarget.style.background = 'var(--dark)'; }}
+                            >
+                                {isLoading ? 'Creating Account…' : 'Create Account →'}
+                            </button>
+                        </form>
+                    </div>
 
-                            {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
-                        </div>
-
-                        <button
-                            type="submit"
-                            disabled={isLoading}
-                            className="w-full bg-gold text-black py-2.5 rounded-lg font-bold hover:bg-gold/90 transition-colors shadow-[0_0_15px_rgba(201,169,110,0.2)] disabled:opacity-70 disabled:cursor-not-allowed mt-4"
-                        >
-                            {isLoading ? 'Creating Account...' : 'Create Account'}
-                        </button>
-
-                        <button
-                            type="button"
-                            className="w-full border border-white/10 text-white flex justify-center items-center gap-2 py-2.5 rounded-lg font-medium hover:bg-white/5 transition-colors mt-3"
-                        >
-                            <svg className="w-4 h-4" viewBox="0 0 24 24">
-                                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                            </svg>
-                            Continue with Google
-                        </button>
-                    </form>
-
-                    <p className="text-center text-sm text-gray-400 mt-8">
+                    <p className="text-center text-sm mt-6" style={{ color: 'var(--muted)' }}>
                         Already have an account?{' '}
-                        <Link href="/auth/login" className="text-white font-medium hover:text-gold transition-colors">
-                            Log in
-                        </Link>
+                        <Link href="/auth/login" className="font-semibold hover:underline" style={{ color: 'var(--text)' }}>Log in</Link>
                     </p>
                 </div>
             </div>

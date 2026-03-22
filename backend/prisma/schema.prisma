@@ -11,20 +11,26 @@ model User {
   id        String   @id @default(cuid())
   name      String
   email     String   @unique
-  password  String
+  password  String?
+  image     String?
   createdAt DateTime @default(now())
   trips     Trip[]
+
+  @@index([email])
 }
 
 model Trip {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
   title       String
   destination String
   days        Int
   budget      String
   style       String
   itinerary   Json
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+
+  @@index([userId])
 }

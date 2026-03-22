@@ -2,7 +2,249 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Design tokens ── */
+:root {
+  --bg: #F5F0E8;
+  --surface: #FFFFFF;
+  --dark: #1a1a2e;
+  --accent: #E07B4F;
+  --accent-dark: #C05A2A;
+  --text: #1a1a2e;
+  --muted: #888888;
+  --border: rgba(26, 26, 46, 0.08);
+}
+
+/* ── Base reset ── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  background-color: theme('colors.background');
-  color: theme('colors.white');
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sora), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Typography helpers ── */
+.font-fraunces {
+  font-family: var(--font-fraunces), Georgia, serif;
+}
+
+.font-sora {
+  font-family: var(--font-sora), system-ui, sans-serif;
+}
+
+/* ── Utility: no-sharp corners ── */
+.card {
+  border-radius: 20px;
+}
+
+.pill {
+  border-radius: 100px;
+}
+
+.small-r {
+  border-radius: 12px;
+}
+
+/* ── Primary button ── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--dark);
+  color: #fff;
+  border: none;
+  border-radius: 100px;
+  padding: 0.75rem 2rem;
+  font-family: var(--font-sora), sans-serif;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: var(--accent);
+  transform: translateY(-2px);
+}
+
+/* ── Accent button ── */
+.btn-accent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 100px;
+  padding: 0.75rem 2rem;
+  font-family: var(--font-sora), sans-serif;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.btn-accent:hover {
+  background: var(--accent-dark);
+  transform: translateY(-2px);
+}
+
+/* ── Card hover lift ── */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(26, 26, 46, 0.1);
+}
+
+/* ── Custom scrollbar (sidebar) ── */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 100px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+/* ── Form inputs ── */
+.tm-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  color: var(--text);
+  font-family: var(--font-sora), sans-serif;
+  font-size: 0.9375rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.tm-input:focus {
+  border-color: var(--accent);
+}
+
+.tm-input::placeholder {
+  color: var(--muted);
+}
+
+/* ── Pill toggle (style/pace selectors) ── */
+.pill-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1.25rem;
+  border-radius: 100px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pill-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.pill-toggle.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* ── Fraunces heading styles ── */
+h1,
+h2,
+h3 {
+  font-family: var(--font-fraunces), Georgia, serif;
+}
+
+/* ── Skeleton shimmer ── */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f0ede6 25%, #e8e4dd 50%, #f0ede6 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+/* ── Print styles (Budget tracker export) ── */
+@media print {
+
+  aside,
+  .no-print {
+    display: none !important;
+  }
+
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body {
+    background: white !important;
+  }
+}
+
+/* ── Mobile sidebar sheet ── */
+.mobile-sheet-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 150;
+}
+
+@media (max-width: 768px) {
+  .mobile-sheet-overlay.open {
+    display: block;
+  }
+
+  .sidebar-desktop {
+    display: none !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .sidebar-desktop {
+    display: flex !important;
+  }
+
+  .mobile-nav-bar {
+    display: none !important;
+  }
 }

@@ -1,258 +1,399 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Cookies from 'js-cookie';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plane, Sparkles, Map, IndianRupee, DollarSign, Euro } from 'lucide-react';
-import axios from 'axios';
+import { Plane, Sparkles, Map, DollarSign, Compass, RefreshCw } from 'lucide-react';
+import axios, { CancelTokenSource } from 'axios';
 
+// ── Constants ─────────────────────────────────────────────────────────────
 const LOADING_MESSAGES = [
-    "Thinking about your trip...",
-    "Finding hidden gems...",
-    "Building your itinerary..."
+    'Thinking about your trip…',
+    'Finding hidden gems…',
+    'Building your itinerary…',
+    'Almost there…',
 ];
+const STYLES = ['Backpacker', 'Budget', 'Mid-range', 'Luxury'];
+const PACES = ['Slow & relaxed', 'Balanced', 'Fast & packed'];
+const LS_KEY = 'tripmind_plan_draft';
+const MAX_CHARS = 500;
 
-export default function PlanPage() {
+// ── Types ─────────────────────────────────────────────────────────────────
+interface FormErrors {
+    description?: string;
+    days?: string;
+    budget?: string;
+    general?: string;
+}
+
+function PlanPageInner() {
     const router = useRouter();
-    const [description, setDescription] = useState('');
-    const [days, setDays] = useState<number | ''>('');
-    const [budget, setBudget] = useState('');
-    const [currency, setCurrency] = useState('INR');
-    const [style, setStyle] = useState('Mid-range');
-    const [pace, setPace] = useState('Balanced');
+    const searchParams = useSearchParams();
+    const cancelSourceRef = useRef<CancelTokenSource | null>(null);
 
+    // Pre-fill from URL params or saved localStorage draft
+    const getInitial = <T,>(key: string, urlParam: string | null, fallback: T): T => {
+        if (urlParam !== null) return urlParam as unknown as T;
+        try {
+            const saved = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+            return (saved[key] as T) ?? fallback;
+        } catch {
+            return fallback;
+        }
+    };
+
+    const [description, setDescription] = useState<string>(() =>
+        getInitial('description', searchParams.get('destination') ? `I want to explore ${searchParams.get('destination')}` : null, '')
+    );
+    const [days, setDays] = useState<number | ''>(() =>
+        getInitial('days', searchParams.get('days'), '' as number | '')
+    );
+    const [budget, setBudget] = useState<string>(() =>
+        getInitial('budget', searchParams.get('budget'), '')
+    );
+    const [currency, setCurrency] = useState<string>(() =>
+        getInitial('currency', searchParams.get('currency'), 'INR')
+    );
+    const [style, setStyle] = useState<string>(() =>
+        getInitial('style', searchParams.get('style'), 'Mid-range')
+    );
+    const [pace, setPace] = useState<string>(() =>
+        getInitial('pace', null, 'Balanced')
+    );
     const [isLoading, setIsLoading] = useState(false);
-    const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
+    const [loadingIdx, setLoadingIdx] = useState(0);
+    const [errors, setErrors] = useState<FormErrors>({});
 
-    // Protected route check
+    // ── Auth guard ───────────────────────────────────────────────────────
     useEffect(() => {
         const token = Cookies.get('token');
-        if (!token) {
-            router.push('/auth/login');
-        }
+        if (!token) router.push('/auth/login');
     }, [router]);
 
-    // Loading message cycler
+    // ── Save draft to localStorage on field change ────────────────────────
+    useEffect(() => {
+        try {
+            localStorage.setItem(LS_KEY, JSON.stringify({ description, days, budget, currency, style, pace }));
+        } catch { /* storage unavailable */ }
+    }, [description, days, budget, currency, style, pace]);
+
+    // ── Loading message carousel ─────────────────────────────────────────
     useEffect(() => {
         let interval: NodeJS.Timeout;
         if (isLoading) {
-            interval = setInterval(() => {
-                setLoadingMsgIdx((prev) => (prev + 1) % LOADING_MESSAGES.length);
-            }, 2000);
+            interval = setInterval(() => setLoadingIdx((p) => (p + 1) % LOADING_MESSAGES.length), 2200);
         }
         return () => clearInterval(interval);
     }, [isLoading]);
 
+    // ── Cancel request on navigate-away ──────────────────────────────────
+    useEffect(() => {
+        return () => { cancelSourceRef.current?.cancel('Page unmounted'); };
+    }, []);
+
+    // ── Validation ───────────────────────────────────────────────────────
+    const validate = (): boolean => {
+        const e: FormErrors = {};
+        if (!description.trim() || description.trim().length < 2) {
+            e.description = 'Please describe your trip (at least 2 characters).';
+        }
+        if (description.trim().length > MAX_CHARS) {
+            e.description = `Description must be under ${MAX_CHARS} characters.`;
+        }
+        const numDays = Number(days);
+        if (!days || isNaN(numDays) || numDays < 1 || numDays > 30) {
+            e.days = 'Days must be between 1 and 30.';
+        }
+        const numBudget = parseFloat(budget);
+        if (!budget || isNaN(numBudget) || numBudget <= 0) {
+            e.budget = 'Please enter a valid positive budget.';
+        }
+        setErrors(e);
+        return Object.keys(e).length === 0;
+    };
+
+    // ── Submit ────────────────────────────────────────────────────────────
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!description || !days || !budget) return;
-
+        if (!validate()) return;
         setIsLoading(true);
+        setErrors({});
 
         const token = Cookies.get('token');
-        try {
-            const response = await axios.post('http://localhost:8000/trips/generate', {
-                description,
-                days: Number(days),
-                budget,
-                currency,
-                style,
-                pace
-            }, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+        const source = axios.CancelToken.source();
+        cancelSourceRef.current = source;
 
-            const tripId = response.data?.id || 'new-trip-123';
-            router.push(`/dashboard?trip_id=${tripId}`);
-        } catch (error: any) {
-            console.error("Backend generation failed", error);
-            if (error.response?.status === 401) {
+        try {
+            const res = await axios.post(
+                'http://localhost:8000/trips/generate',
+                { description: description.trim(), days: Number(days), budget, currency, style, pace },
+                { headers: { Authorization: `Bearer ${token}` }, cancelToken: source.token }
+            );
+            // Clear the draft on success
+            try { localStorage.removeItem(LS_KEY); } catch { /* ignore */ }
+            router.push(`/dashboard?trip_id=${res.data.id}`);
+        } catch (err: unknown) {
+            if (axios.isCancel(err)) return;
+            const axErr = err as { response?: { status?: number; data?: { error?: string } }; request?: unknown };
+            if (axErr.response?.status === 401) {
                 Cookies.remove('token');
                 router.push('/auth/login');
                 return;
             }
+            const msg = axErr.response?.data?.error || (axErr.request ? 'Connection error. Please check your internet.' : 'Something went wrong. Please try again.');
+            setErrors({ general: msg });
             setIsLoading(false);
-            alert('API Error: ' + (error.response?.data?.error || error.message));
         }
     };
 
-    const formVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: { staggerChildren: 0.1, delayChildren: 0.1 }
-        }
+    // ── Retry ─────────────────────────────────────────────────────────────
+    const handleRetry = () => {
+        setErrors({});
+        setIsLoading(false);
     };
 
-    const itemVariants: any = {
-        hidden: { opacity: 0, y: 30 },
-        visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
-    };
-
+    /* — Loading screen — */
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-background text-white flex flex-col items-center justify-center font-sans relative overflow-hidden">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gold/5 rounded-full blur-[100px] pointer-events-none -z-10" />
-
+            <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden"
+                style={{ background: 'var(--dark)' }}>
+                <div className="pointer-events-none absolute inset-0"
+                    style={{ background: 'radial-gradient(circle at center, rgba(224,123,79,0.15) 0%, transparent 70%)' }} />
                 <motion.div
                     animate={{ x: [0, 40, -40, 0], y: [0, -20, 10, 0], rotate: [0, 5, -5, 0] }}
-                    transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
-                    className="relative z-10"
+                    transition={{ repeat: Infinity, duration: 6, ease: 'easeInOut' }}
+                    className="mb-10 z-10"
                 >
-                    <Plane className="w-20 h-20 text-gold mb-10 drop-shadow-[0_0_15px_rgba(201,169,110,0.5)]" />
+                    <Plane className="w-20 h-20" style={{ color: 'var(--accent)' }} />
                 </motion.div>
-
-                <div className="h-10 relative z-10">
+                <div className="h-10 z-10">
                     <AnimatePresence mode="wait">
                         <motion.h2
-                            key={loadingMsgIdx}
-                            initial={{ opacity: 0, y: 15 }}
+                            key={loadingIdx}
+                            initial={{ opacity: 0, y: 12 }}
                             animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -15 }}
-                            transition={{ duration: 0.4 }}
-                            className="text-3xl font-playfair font-semibold text-gold tracking-wide text-center"
+                            exit={{ opacity: 0, y: -12 }}
+                            transition={{ duration: 0.35 }}
+                            className="font-fraunces font-light italic text-3xl text-center"
+                            style={{ color: '#fff' }}
                         >
-                            {LOADING_MESSAGES[loadingMsgIdx]}
+                            {LOADING_MESSAGES[loadingIdx]}
                         </motion.h2>
                     </AnimatePresence>
                 </div>
+                <button
+                    onClick={() => { cancelSourceRef.current?.cancel('User cancelled'); setIsLoading(false); }}
+                    className="z-10 mt-14 font-sora text-sm font-semibold"
+                    style={{ color: 'rgba(255,255,255,0.35)', background: 'none', border: 'none', cursor: 'pointer' }}
+                >
+                    Cancel
+                </button>
             </div>
         );
     }
 
+    const inputBase: React.CSSProperties = {
+        width: '100%',
+        background: 'var(--bg)',
+        border: '1.5px solid var(--border)',
+        borderRadius: '12px',
+        padding: '0.75rem 1rem',
+        color: 'var(--text)',
+        fontFamily: 'var(--font-sora)',
+        fontSize: '15px',
+        outline: 'none',
+        transition: 'border-color 0.2s',
+    };
+    const inputErr: React.CSSProperties = { ...inputBase, borderColor: '#e05555' };
+
+    const pillStyle = (active: boolean): React.CSSProperties => ({
+        padding: '0.45rem 1.25rem',
+        borderRadius: '100px',
+        fontSize: '13px',
+        fontWeight: 600,
+        fontFamily: 'var(--font-sora)',
+        border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+        background: active ? 'var(--accent)' : 'var(--surface)',
+        color: active ? '#fff' : 'var(--muted)',
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+        minHeight: '44px',
+        minWidth: '44px',
+    });
+
+    const charsLeft = MAX_CHARS - description.length;
+
     return (
-        <div className="min-h-screen bg-background text-white py-16 px-6 font-sans relative overflow-x-hidden">
-            {/* Background blobs */}
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-purple-900/15 rounded-full blur-[120px] pointer-events-none -z-10" />
-            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-gold/5 rounded-full blur-[120px] pointer-events-none -z-10" />
+        <div className="min-h-screen py-16 px-6 relative" style={{ background: 'var(--bg)' }}>
 
-            <div className="max-w-[600px] mx-auto relative z-10">
-                <header className="mb-10 text-center">
-                    <h1 className="text-4xl lg:text-5xl font-playfair font-bold text-gold mb-4 leading-tight">Design your journey</h1>
-                    <p className="text-gray-400 text-lg">Tell us what you love, and AI will craft the perfect itinerary.</p>
-                </header>
+            {/* Back link */}
+            <div className="max-w-[620px] mx-auto mb-6">
+                <Link href="/dashboard" className="flex items-center gap-1.5 text-sm font-semibold"
+                    style={{ color: 'var(--muted)', textDecoration: 'none' }}>
+                    ← Back to dashboard
+                </Link>
+            </div>
 
+            <div className="max-w-[620px] mx-auto">
+                {/* Header */}
+                <div className="text-center mb-10">
+                    <h1 className="font-fraunces font-semibold mb-3" style={{ fontSize: 'clamp(2rem,5vw,3rem)', color: 'var(--text)' }}>
+                        Design your journey
+                    </h1>
+                    <p className="font-sora text-sm" style={{ color: 'var(--muted)', lineHeight: 1.7 }}>
+                        Tell us what you love and AI will craft the perfect itinerary.
+                    </p>
+                </div>
+
+                {/* General error banner with retry */}
+                {errors.general && (
+                    <div className="flex items-center justify-between gap-4 mb-6 px-5 py-4"
+                        style={{ background: 'rgba(224,85,85,0.08)', border: '1.5px solid rgba(224,85,85,0.25)', borderRadius: '14px' }}>
+                        <p className="font-sora text-sm" style={{ color: '#c0392b' }}>{errors.general}</p>
+                        <button onClick={handleRetry}
+                            className="flex items-center gap-1.5 font-sora text-sm font-semibold flex-shrink-0"
+                            style={{ color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', minHeight: '44px' }}>
+                            <RefreshCw className="w-4 h-4" /> Retry
+                        </button>
+                    </div>
+                )}
+
+                {/* Form card */}
                 <motion.form
-                    initial="hidden"
-                    animate="visible"
-                    variants={formVariants}
                     onSubmit={handleSubmit}
-                    className="bg-surface p-8 sm:p-10 rounded-3xl border border-white/5 shadow-2xl space-y-8 relative overflow-hidden backdrop-blur-sm"
+                    noValidate
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.45 }}
+                    className="space-y-7 p-8 sm:p-10"
+                    style={{ background: 'var(--surface)', borderRadius: '20px', border: '1.5px solid var(--border)' }}
                 >
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/[0.02] rounded-full blur-[80px] -z-10" />
-
-                    {/* Describe Trip */}
-                    <motion.div variants={itemVariants}>
-                        <label className="text-sm font-semibold mb-3 flex items-center gap-2 text-gray-200">
-                            <Sparkles className="w-4 h-4 text-gold" /> Describe your trip...
+                    {/* Describe */}
+                    <div>
+                        <label className="flex items-center gap-2 text-sm font-semibold mb-2.5" style={{ color: 'var(--text)' }}>
+                            <Sparkles className="w-4 h-4" style={{ color: 'var(--accent)' }} />
+                            Describe your trip
                         </label>
                         <textarea
                             value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            required
-                            className="w-full h-32 bg-black/40 border border-white/10 rounded-2xl p-5 text-lg text-white focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold transition-all resize-none placeholder-gray-600 shadow-inner"
-                            placeholder="5 days in Rajasthan, hate tourist crowds, love food and architecture, budget ₹30k"
+                            onChange={(e) => {
+                                if (e.target.value.length <= MAX_CHARS) setDescription(e.target.value);
+                            }}
+                            rows={4}
+                            placeholder="5 days in Rajasthan — love street food and architecture, hate tourist crowds, budget ₹30k"
+                            style={{ ...(errors.description ? inputErr : inputBase), resize: 'none', borderRadius: '14px', padding: '1rem' }}
                         />
-                    </motion.div>
+                        <div className="flex items-center justify-between mt-1.5">
+                            {errors.description
+                                ? <p className="text-xs" style={{ color: '#e05555' }}>{errors.description}</p>
+                                : <span />
+                            }
+                            <p className="text-xs ml-auto" style={{ color: charsLeft <= 50 ? '#e05555' : 'var(--muted)' }}>
+                                {charsLeft} / {MAX_CHARS}
+                            </p>
+                        </div>
+                    </div>
 
-                    {/* Days & Budget */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                        <motion.div variants={itemVariants}>
-                            <label className="text-sm font-semibold mb-3 flex items-center gap-2 text-gray-200">
-                                <Map className="w-4 h-4 text-gold" /> How many days?
+                    {/* Days + Budget */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div>
+                            <label className="flex items-center gap-2 text-sm font-semibold mb-2.5" style={{ color: 'var(--text)' }}>
+                                <Map className="w-4 h-4" style={{ color: 'var(--accent)' }} />
+                                How many days?
                             </label>
                             <input
-                                type="number"
-                                min="1" max="30"
-                                required
-                                value={days}
-                                onChange={(e) => setDays(Number(e.target.value))}
-                                className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-lg text-white focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold transition-all shadow-inner"
+                                type="number" min={1} max={30}
+                                value={days} onChange={(e) => setDays(e.target.value === '' ? '' : Number(e.target.value))}
                                 placeholder="e.g. 5"
+                                style={errors.days ? inputErr : inputBase}
                             />
-                        </motion.div>
-
-                        <motion.div variants={itemVariants}>
-                            <label className="text-sm font-semibold mb-3 flex items-center gap-2 text-gray-200">
-                                <DollarSign className="w-4 h-4 text-gold" /> Total Budget
+                            {errors.days && <p className="text-xs mt-1.5" style={{ color: '#e05555' }}>{errors.days}</p>}
+                        </div>
+                        <div>
+                            <label className="flex items-center gap-2 text-sm font-semibold mb-2.5" style={{ color: 'var(--text)' }}>
+                                <DollarSign className="w-4 h-4" style={{ color: 'var(--accent)' }} />
+                                Total Budget
                             </label>
-                            <div className="flex bg-black/40 border border-white/10 rounded-2xl overflow-hidden focus-within:border-gold focus-within:ring-1 focus-within:ring-gold transition-all shadow-inner">
+                            <div style={{ display: 'flex', border: `1.5px solid ${errors.budget ? '#e05555' : 'var(--border)'}`, borderRadius: '12px', overflow: 'hidden', background: 'var(--bg)' }}>
                                 <select
                                     value={currency}
                                     onChange={(e) => setCurrency(e.target.value)}
-                                    className="bg-transparent text-gray-300 font-medium pl-4 py-4 pr-1 outline-none cursor-pointer border-r border-white/10 hover:text-white"
+                                    style={{ background: 'transparent', color: 'var(--text)', padding: '0.75rem 0.5rem 0.75rem 0.75rem', fontSize: '13px', fontWeight: 600, outline: 'none', borderRight: '1.5px solid var(--border)' }}
                                 >
-                                    <option value="INR" className="bg-surface text-white">INR</option>
-                                    <option value="USD" className="bg-surface text-white">USD</option>
-                                    <option value="EUR" className="bg-surface text-white">EUR</option>
+                                    <option value="INR">INR</option>
+                                    <option value="USD">USD</option>
+                                    <option value="EUR">EUR</option>
                                 </select>
                                 <input
-                                    type="number"
-                                    required
-                                    value={budget}
+                                    type="number" value={budget}
                                     onChange={(e) => setBudget(e.target.value)}
-                                    className="w-full bg-transparent p-4 text-lg text-white outline-none"
                                     placeholder="30000"
+                                    style={{ flex: 1, background: 'transparent', color: 'var(--text)', padding: '0.75rem', fontSize: '15px', outline: 'none' }}
                                 />
                             </div>
-                        </motion.div>
+                            {errors.budget && <p className="text-xs mt-1.5" style={{ color: '#e05555' }}>{errors.budget}</p>}
+                        </div>
                     </div>
 
-                    {/* Travel Style */}
-                    <motion.div variants={itemVariants}>
-                        <label className="block text-sm font-semibold mb-4 text-gray-200">Travel Style</label>
-                        <div className="flex flex-wrap gap-3">
-                            {['Backpacker', 'Budget', 'Mid-range', 'Luxury'].map((s) => (
-                                <button
-                                    key={s}
-                                    type="button"
-                                    onClick={() => setStyle(s)}
-                                    className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all ${style === s
-                                        ? 'bg-gold/20 text-gold border border-gold/50 shadow-[0_0_15px_rgba(201,169,110,0.15)] scale-105'
-                                        : 'bg-black/30 text-gray-400 border border-white/5 hover:border-white/20 hover:text-gray-200 hover:bg-white/5'
-                                        }`}
-                                >
-                                    {s}
-                                </button>
+                    {/* Style pills */}
+                    <div>
+                        <label className="block text-sm font-semibold mb-3" style={{ color: 'var(--text)' }}>Travel Style</label>
+                        <div className="flex flex-wrap gap-2">
+                            {STYLES.map((s) => (
+                                <button key={s} type="button" onClick={() => setStyle(s)} style={pillStyle(style === s)}>{s}</button>
                             ))}
                         </div>
-                    </motion.div>
+                    </div>
 
-                    {/* Pace */}
-                    <motion.div variants={itemVariants}>
-                        <label className="block text-sm font-semibold mb-4 text-gray-200">Trip Pace</label>
-                        <div className="flex flex-wrap gap-3">
-                            {['Slow & relaxed', 'Balanced', 'Fast & packed'].map((p) => (
-                                <button
-                                    key={p}
-                                    type="button"
-                                    onClick={() => setPace(p)}
-                                    className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all ${pace === p
-                                        ? 'bg-gold/20 text-gold border border-gold/50 shadow-[0_0_15px_rgba(201,169,110,0.15)] scale-105'
-                                        : 'bg-black/30 text-gray-400 border border-white/5 hover:border-white/20 hover:text-gray-200 hover:bg-white/5'
-                                        }`}
-                                >
-                                    {p}
-                                </button>
+                    {/* Pace pills */}
+                    <div>
+                        <label className="block text-sm font-semibold mb-3" style={{ color: 'var(--text)' }}>Trip Pace</label>
+                        <div className="flex flex-wrap gap-2">
+                            {PACES.map((p) => (
+                                <button key={p} type="button" onClick={() => setPace(p)} style={pillStyle(pace === p)}>{p}</button>
                             ))}
                         </div>
-                    </motion.div>
+                    </div>
 
                     {/* Submit */}
-                    <motion.div variants={itemVariants} className="pt-6">
-                        <button
-                            type="submit"
-                            className="w-full bg-gold text-black py-4 rounded-xl font-bold text-lg hover:bg-gold/90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(201,169,110,0.3)] flex justify-center items-center gap-2"
-                        >
-                            Generate My Itinerary
-                        </button>
-                    </motion.div>
+                    <button
+                        type="submit"
+                        disabled={isLoading}
+                        style={{
+                            width: '100%',
+                            background: isLoading ? 'var(--muted)' : 'var(--dark)',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '100px',
+                            padding: '0.9rem 2rem',
+                            fontSize: '15px',
+                            fontWeight: 600,
+                            fontFamily: 'var(--font-sora)',
+                            cursor: isLoading ? 'not-allowed' : 'pointer',
+                            transition: 'background 0.2s, transform 0.2s',
+                            minHeight: '44px',
+                        }}
+                        onMouseEnter={(e) => { if (!isLoading) { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.transform = 'translateY(-2px)'; } }}
+                        onMouseLeave={(e) => { if (!isLoading) { e.currentTarget.style.background = 'var(--dark)'; e.currentTarget.style.transform = 'none'; } }}
+                    >
+                        Generate Itinerary →
+                    </button>
                 </motion.form>
             </div>
         </div>
+    );
+}
+
+export default function PlanPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
+                <Compass className="w-12 h-12 animate-spin" style={{ color: 'var(--accent)' }} />
+            </div>
+        }>
+            <PlanPageInner />
+        </Suspense>
     );
 }

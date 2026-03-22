@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon server.js",
-    "start": "node server.js"
+    "dev": "npx prisma db push && nodemon server.js",
+    "start": "npx prisma db push && node server.js"
   },
   "keywords": [],
   "author": "",
