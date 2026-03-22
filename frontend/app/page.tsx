@@ -8,14 +8,11 @@ import { BrainCircuit, Gem, Map, Plane, Sparkles, Search } from "lucide-react";
 import axios from "axios";
 import Cookies from "js-cookie";
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 28 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: "easeOut" as const } },
-};
-const stagger = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.15 } },
-};
+const fadeUpProps = (delay = 0) => ({
+  initial: { opacity: 0, y: 28 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.55, ease: 'easeOut' as const, delay },
+});
 
 const STYLES = ["Backpacker", "Budget", "Mid-range", "Luxury"];
 const PACES = ["Slow & relaxed", "Balanced", "Fast & packed"];
@@ -96,14 +93,9 @@ export default function LandingPage() {
           style={{ background: "radial-gradient(circle, #4f8fe0 0%, transparent 70%)", filter: "blur(100px)" }}
         />
 
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={stagger}
-          className="max-w-3xl mx-auto text-center relative z-10"
-        >
+        <div className="max-w-3xl mx-auto text-center relative z-10">
           {/* Eyebrow tag */}
-          <motion.div variants={fadeUp} className="mb-6 flex justify-center">
+          <motion.div {...fadeUpProps(0)} className="mb-6 flex justify-center">
             <span
               className="inline-flex items-center gap-2 px-4 py-1.5 text-sm font-semibold rounded-full"
               style={{ background: "rgba(224,123,79,0.12)", color: "var(--accent)", border: "1px solid rgba(224,123,79,0.3)" }}
@@ -115,7 +107,7 @@ export default function LandingPage() {
 
           {/* Headline */}
           <motion.h1
-            variants={fadeUp}
+            {...fadeUpProps(0.1)}
             className="font-fraunces font-semibold leading-tight mb-6"
             style={{ fontSize: "clamp(2.5rem, 6vw, 4.5rem)", lineHeight: 1.1, color: "var(--text)" }}
           >
@@ -125,14 +117,14 @@ export default function LandingPage() {
           </motion.h1>
 
           <motion.p
-            variants={fadeUp}
+            {...fadeUpProps(0.2)}
             className="font-sora mb-10 max-w-xl mx-auto"
             style={{ fontSize: "15px", color: "var(--muted)", lineHeight: 1.7 }}
           >
             Describe your dream trip in plain language — TripMind&apos;s AI builds a full day-by-day itinerary with maps, hidden gems, and budget estimates in seconds.
           </motion.p>
 
-          <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center">
+          <motion.div {...fadeUpProps(0.3)} className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/auth/signup"
               className="btn-primary"
@@ -148,18 +140,12 @@ export default function LandingPage() {
               See How It Works
             </a>
           </motion.div>
-        </motion.div>
+        </div>
       </section>
 
       {/* ── FEATURES ── */}
       <section id="features" className="py-20 px-6">
-        <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-80px" }}
-          variants={stagger}
-          className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-6"
-        >
+        <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-6">
           {[
             {
               icon: BrainCircuit,
@@ -185,7 +171,10 @@ export default function LandingPage() {
           ].map(({ icon: Icon, iconBg, iconColor, title, desc }, i) => (
             <motion.div
               key={i}
-              variants={fadeUp}
+              initial={{ opacity: 0, y: 28 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.45, ease: 'easeOut' as const, delay: i * 0.1 }}
               className="card-hover p-8"
               style={{
                 background: "var(--surface)",
@@ -210,7 +199,7 @@ export default function LandingPage() {
               </p>
             </motion.div>
           ))}
-        </motion.div>
+        </div>
       </section>
 
       {/* ── HOW IT WORKS ── */}
@@ -229,13 +218,7 @@ export default function LandingPage() {
               Three steps to your perfect trip
             </h2>
           </motion.div>
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={stagger}
-            className="grid grid-cols-1 md:grid-cols-3 gap-6"
-          >
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               { icon: Search, step: "01", title: "Describe your trip", desc: "Tell us your destination, vibe, budget, and how many days." },
               { icon: Sparkles, step: "02", title: "AI builds your plan", desc: "Gemini generates a detailed itinerary with GPS-pinned activities and insider tips." },
@@ -243,7 +226,10 @@ export default function LandingPage() {
             ].map(({ icon: Icon, step, title, desc }) => (
               <motion.div
                 key={step}
-                variants={fadeUp}
+                initial={{ opacity: 0, y: 28 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.45, ease: 'easeOut' as const, delay: ['01', '02', '03'].indexOf(step) * 0.1 }}
                 className="card-hover p-8 relative overflow-hidden"
                 style={{
                   background: "var(--surface)",
@@ -271,7 +257,7 @@ export default function LandingPage() {
                 </p>
               </motion.div>
             ))}
-          </motion.div>
+          </div>
         </div>
       </section>
 
