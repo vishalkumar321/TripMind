@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <a href="https://trip-mind-h02kper4i-vishalkumar321s-projects.vercel.app" target="_blank"><strong>🚀 Live Demo »</strong></a>
+  <a href="https://trip-mind-neon.vercel.app" target="_blank"><strong>🚀 Live Demo »</strong></a>
   &nbsp;&nbsp;|&nbsp;&nbsp;
   <a href="https://tripmind-uvwj.onrender.com/health" target="_blank"><strong>🔌 API Health »</strong></a>
 </p>
