@@ -61,7 +61,8 @@ export default function SignupPage() {
         if (!validate()) return;
         setIsLoading(true);
         try {
-            await axios.post('http://localhost:8000/auth/signup', {
+            const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+            await axios.post(`${API}/auth/signup`, {
                 name: name.trim(),
                 email: email.trim(),
                 password: password.trim(),

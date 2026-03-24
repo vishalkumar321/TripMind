@@ -126,8 +126,9 @@ function PlanPageInner() {
         cancelSourceRef.current = source;
 
         try {
+            const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
             const res = await axios.post(
-                'http://localhost:8000/trips/generate',
+                `${API}/trips/generate`,
                 { description: description.trim(), days: Number(days), budget, currency, style, pace },
                 { headers: { Authorization: `Bearer ${token}` }, cancelToken: source.token }
             );

@@ -59,8 +59,9 @@ export default function ChatPanel({ trip }: ChatPanelProps) {
         setIsTyping(true);
         try {
             const token = Cookies.get('token');
+            const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
             const res = await axios.post(
-                'http://localhost:8000/trips/chat',
+                `${API}/trips/chat`,
                 {
                     message: msg,
                     tripContext: {

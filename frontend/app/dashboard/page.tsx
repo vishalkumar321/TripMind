@@ -153,9 +153,10 @@ function DashboardContent() {
     useEffect(() => {
         const token = Cookies.get('token');
         if (!token) { router.push('/auth/login'); return; }
+        const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
         Promise.all([
-            axios.get('http://localhost:8000/trips/my', { headers: { Authorization: `Bearer ${token}` } }),
-            axios.get('http://localhost:8000/auth/me', { headers: { Authorization: `Bearer ${token}` } }),
+            axios.get(`${API}/trips/my`, { headers: { Authorization: `Bearer ${token}` } }),
+            axios.get(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` } }),
         ]).then(([tripsRes, meRes]) => {
             const fetched: Trip[] = tripsRes.data;
             setTrips(fetched);
@@ -228,8 +229,9 @@ function DashboardContent() {
         setConfirmRegenerate(false);
         setIsRegenerating(true);
         const token = Cookies.get('token');
+        const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
         try {
-            const res = await axios.post('http://localhost:8000/trips/generate', {
+            const res = await axios.post(`${API}/trips/generate`, {
                 description: `Regenerate my trip to ${selectedTrip.destination}. Keep it ${selectedTrip.style?.toLowerCase()}, same general vibe.`,
                 days: selectedTrip.days, budget: selectedTrip.budget,
                 currency: 'INR', style: selectedTrip.style, pace: 'Balanced',

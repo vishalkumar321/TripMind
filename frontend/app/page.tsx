@@ -37,8 +37,9 @@ export default function LandingPage() {
 
     setIsLoading(true);
     try {
+      const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       const res = await axios.post(
-        "http://localhost:8000/trips/generate",
+        `${API}/trips/generate`,
         { description, days: Number(days), budget, currency, style, pace },
         { headers: { Authorization: `Bearer ${token}` } }
       );
