@@ -14,7 +14,11 @@ declare module 'next-auth/jwt' {
     interface JWT { id?: string; backendToken?: string; }
 }
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// BACKEND_API_URL is a server-only env var (no NEXT_PUBLIC_ prefix).
+// NEXT_PUBLIC_API_URL is baked in at build time for client-side code only;
+// it is NOT reliably available inside server-side NextAuth callbacks on Vercel.
+// Set BACKEND_API_URL = https://tripmind-uvwj.onrender.com on Vercel as a plain env var.
+const API = process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export const authOptions: NextAuthOptions = {
     providers: [
@@ -30,25 +34,50 @@ export const authOptions: NextAuthOptions = {
                 password: { label: 'Password', type: 'password' },
             },
             async authorize(credentials) {
-                if (!credentials?.email || !credentials?.password) return null;
+                if (!credentials?.email || !credentials?.password) {
+                    throw new Error('Email and password are required');
+                }
+
+                const loginUrl = `${API}/auth/login`;
+                console.log('[NextAuth] authorize → calling', loginUrl);
+
+                let res: Response;
                 try {
-                    const res = await fetch(`${API}/auth/login`, {
+                    res = await fetch(loginUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email: credentials.email, password: credentials.password }),
+                        body: JSON.stringify({
+                            email: credentials.email,
+                            password: credentials.password,
+                        }),
                     });
-                    const data = await res.json();
-                    if (!res.ok) return null;
-                    return {
-                        id: data.user.id,
-                        name: data.user.name,
-                        email: data.user.email,
-                        image: data.user.image || null,
-                        backendToken: data.token,
-                    } as User;
-                } catch {
-                    return null;
+                } catch (networkErr) {
+                    console.error('[NextAuth] Network error reaching backend:', networkErr);
+                    throw new Error('Cannot reach the server. Please try again.');
                 }
+
+                let data: any;
+                try {
+                    data = await res.json();
+                } catch {
+                    console.error('[NextAuth] Non-JSON response from backend, status:', res.status);
+                    throw new Error('Unexpected server response');
+                }
+
+                console.log('[NextAuth] backend response status:', res.status, 'body:', data);
+
+                if (!res.ok) {
+                    // Surface the backend's error message so the user sees a real reason
+                    throw new Error(data?.error || data?.message || 'Invalid credentials');
+                }
+
+                return {
+                    id: data.user.id,
+                    name: data.user.name,
+                    email: data.user.email,
+                    image: data.user.image || null,
+                    backendToken: data.token,
+                } as User;
             },
         }),
     ],

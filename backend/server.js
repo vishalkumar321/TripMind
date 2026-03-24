@@ -16,9 +16,9 @@ const tripRoutes = require('./routes/trips');
 
 const app = express();
 
-// ── CORS ───────────────────────────────────────────────────────────────────
 const allowedOrigins = [
     'http://localhost:3000',
+    'https://trip-mind-neon.vercel.app',
     process.env.FRONTEND_URL,
 ].filter(Boolean);
 
