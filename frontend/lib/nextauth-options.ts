@@ -56,6 +56,7 @@ export const authOptions: NextAuthOptions = {
                     throw new Error('Cannot reach the server. Please try again.');
                 }
 
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 let data: any;
                 try {
                     data = await res.json();
