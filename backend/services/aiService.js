@@ -62,15 +62,24 @@ Respond ONLY with a valid JSON object, no markdown, no explanation:
   "hidden_gems": ["string"]
 }`;
 
-  const result = await model.generateContent(prompt);
-  const response = await result.response;
-  const text = response.text();
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
 
-  const parsed = extractJSON(text);
-  if (!parsed) {
-    throw new Error('AI returned malformed data. Please try again.');
+    const parsed = extractJSON(text);
+    if (!parsed) {
+      console.error('[Gemini] Malformed JSON response:', text);
+      throw new Error('AI returned malformed data. Please try again.');
+    }
+    return parsed;
+  } catch (error) {
+    console.error('[Gemini] API Error:', error.message);
+    if (error.message?.includes('429') || error.message?.toLowerCase().includes('quota')) {
+      throw new Error('AI_RATE_LIMIT');
+    }
+    throw error;
   }
-  return parsed;
 };
 
 const chatWithTrip = async (message, tripContext) => {

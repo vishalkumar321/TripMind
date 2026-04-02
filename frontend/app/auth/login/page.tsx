@@ -51,7 +51,8 @@ export default function LoginPage() {
             if (newAttempts >= MAX_ATTEMPTS_BEFORE_HINT) {
                 setErrors({ general: 'Too many attempts. Please wait a moment before trying again.' });
             } else {
-                setErrors({ general: 'Incorrect email or password' });
+                // Use the specific error message from the backend/NextAuth
+                setErrors({ general: result.error || 'Incorrect email or password' });
             }
             setIsLoading(false);
         } else {

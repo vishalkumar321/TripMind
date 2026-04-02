@@ -86,12 +86,12 @@ router.post('/login', async (req, res) => {
 
         // Google-only accounts have no password
         if (!user.password) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+            return res.status(401).json({ error: 'This account uses Google Sign-In. Please click "Continue with Google".' });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+            return res.status(401).json({ error: 'Incorrect password. Please try again.' });
         }
 
         const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });

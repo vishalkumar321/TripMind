@@ -65,10 +65,19 @@ router.post('/generate', async (req, res) => {
 
         res.json(trip);
     } catch (err) {
+        if (err.message === 'AI_RATE_LIMIT') {
+            return res.status(429).json({ error: 'AI is currently busy (Rate Limit). Please try again in 1 minute.' });
+        }
+        
+        const isDatabaseError = err.message?.includes('Prisma') || err.message?.includes('database') || err.code?.startsWith('P');
         const isGeminiError = err.message?.includes('AI') || err.message?.includes('itinerary') || err.message?.includes('malformed');
-        const clientMsg = isGeminiError
-            ? 'AI is taking too long. Please try again.'
-            : 'Connection error. Please check your internet.';
+
+        const clientMsg = isDatabaseError
+            ? 'Database error. Please check your connection.'
+            : isGeminiError
+                ? 'AI is taking too long. Please try again.'
+                : 'Something went wrong. Please check your internet.';
+                
         res.status(500).json({ error: clientMsg });
     }
 });

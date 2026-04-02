@@ -24,9 +24,10 @@ const allowedOrigins = [
 
 app.use(cors({
     origin: (origin, callback) => {
-        // Allow requests with no origin (server-to-server, curl, Postman, etc.)
-        // Also explicitly allow any Vercel preview URL
-        if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+        if (!origin) return callback(null, true);
+        const host = new URL(origin).hostname;
+        const isLocal = host === 'localhost' || host === '127.0.0.1';
+        if (isLocal || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
             callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));
@@ -34,6 +35,18 @@ app.use(cors({
     },
     credentials: true,
 }));
+
+// ── Request Logger (Development) ──────────────────────────────────────────
+if (process.env.NODE_ENV !== 'production') {
+    app.use((req, res, next) => {
+        const start = Date.now();
+        res.on('finish', () => {
+            const duration = Date.now() - start;
+            console.log(`${req.method} ${req.originalUrl} → ${res.statusCode} (${duration}ms)`);
+        });
+        next();
+    });
+}
 
 app.use(express.json());
 
